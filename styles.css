@@ -1,0 +1,32 @@
+body {
+    background-color: rgb(193, 236, 163);
+    font-family: "Savate", sans-serif;
+}
+
+button {
+    font-family: "Savate", sans-serif;
+}
+
+.location-card {
+    /* display: inline-block; */
+    width: 90vw;
+    max-width: 400px;
+    height: 70vh;
+    background: #FFFFFF;
+    padding-bottom: 40px;
+    border-radius: 8px;
+    overflow: hidden;
+    position: absolute;
+    will-change: transform;
+    transition: all 0.3s ease-in-out;
+    cursor: -webkit-grab;
+    cursor: -moz-grab;
+    cursor: grab;
+}
+
+.moving.location-card {
+  transition: none;
+  cursor: -webkit-grabbing;
+  cursor: -moz-grabbing;
+  cursor: grabbing;
+}

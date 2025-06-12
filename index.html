@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Cafe Finder</title>
+    <link rel="stylesheet" href="styles.css"> 
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Savate:ital,wght@0,200..900;1,200..900&display=swap" rel="stylesheet">
+    <script
+        src="https://maps.googleapis.com/maps/api/js?key=INSERTKEYHERE&loading=async&libraries=maps&v=beta" defer>
+    </script>
+</head>
+<body>
+    <center>
+        <h1> ☕️ Cafe Curator 🍵 </h1>
+        <p> Find and save the best cafes near you!</p>
+    </center>
+
+    <button onclick="getLocation()">Try It</button>
+    <p id="demo"> qwdergtfghj </p>
+    
+    <div class="locations">
+        <div class="cards">
+            <div class="location-card">
+                <img src="" alt="">
+                <h3>Cafe 1</h3>
+                <p>lorem ipsum blah blah</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="swipe-status">
+        <button> Yes </button>
+        <button> No </button>
+    </div>
+
+    <gmp-map
+    center="37.4220656,-122.0840897"
+    zoom="10"
+    id="map"
+    map-id="DEMO_MAP_ID"
+    style="height: 400px"
+    ></gmp-map>
+    <script>
+        const x = document.getElementById("demo");
+
+        function getLocation() {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(success, error);
+        } else {
+            x.innerHTML = "Geolocation is not supported by this browser.";
+        }
+        }
+
+        function success(position) {
+        x.innerHTML = "Latitude: " + position.coords.latitude +
+        "<br>Longitude: " + position.coords.longitude;
+        }
+
+        function error() {
+        alert("Sorry, no position available.");
+        }
+
+        var map;
+        var service;
+        var infowindow;
+
+        function initMap() {
+        var sydney = new google.maps.LatLng(-33.867, 151.195);
+
+        infowindow = new google.maps.InfoWindow();
+
+        map = new google.maps.Map(
+            document.getElementById('map'), {center: sydney, zoom: 15});
+
+        var request = {
+            query: 'Museum of Contemporary Art Australia',
+            fields: ['name', 'geometry'],
+        };
+
+        var service = new google.maps.places.PlacesService(map);
+
+        service.findPlaceFromQuery(request, function(results, status) {
+            if (status === google.maps.places.PlacesServiceStatus.OK) {
+            for (var i = 0; i < results.length; i++) {
+                createMarker(results[i]);
+            }
+            map.setCenter(results[0].geometry.location);
+            }
+        });
+        }
+    </script>
+</body>
+</html>
