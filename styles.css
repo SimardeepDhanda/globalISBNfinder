@@ -1,32 +1,51 @@
 body {
-    background-color: rgb(193, 236, 163);
-    font-family: "Savate", sans-serif;
+background-color: rgb(193, 236, 163);
+font-family: "Savate", sans-serif;
+text-align: center;
+padding: 1rem;
 }
 
 button {
-    font-family: "Savate", sans-serif;
+font-family: "Savate", sans-serif;
+font-size: 20px;
+background-color: darkgreen;
+color: white;
+border-radius: 10vw;
+padding: 1vw;
+outline-style: none;
+border: none;
 }
 
-.location-card {
-    /* display: inline-block; */
-    width: 90vw;
-    max-width: 400px;
-    height: 70vh;
-    background: #FFFFFF;
-    padding-bottom: 40px;
-    border-radius: 8px;
-    overflow: hidden;
+.cards {
+    position: relative;
+    width: 100%;
+    max-width: 300px;
+    margin: 2rem auto;
+    height: 400px;
+}
+.swipe-wrapper {
     position: absolute;
-    will-change: transform;
-    transition: all 0.3s ease-in-out;
-    cursor: -webkit-grab;
-    cursor: -moz-grab;
-    cursor: grab;
+    top: 0;
+    left: 0;
+    width: 100%;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+}
+.location-card {
+    width: 100%;
+    background: white;
+    border-radius: 10px;
+    /* box-shadow: 0 2px 8px rgba(0,0,0,0.05); */
+    overflow: hidden;
+    text-align: center;
+    padding: 1rem;
+    margin-bottom: 1vh;
+}
+.location-card img {
+    width: 100%;
+    height: 150px;
+    object-fit: cover;
 }
 
-.moving.location-card {
-  transition: none;
-  cursor: -webkit-grabbing;
-  cursor: -moz-grabbing;
-  cursor: grabbing;
+button:hover {
+    background: #555;
 }
