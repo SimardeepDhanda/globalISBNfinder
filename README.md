@@ -1,6 +1,6 @@
-# 📚 Book Finder
+# 📚 ISBN Tracker
 
-A sleek web application that helps you find books at nearby libraries and bookstores using ISBN numbers. Built with Google Maps API and designed for the Greater Toronto Area.
+A sleek web application that helps you find books at nearby libraries and bookstores using ISBN numbers. Built with Google Maps API.
 
 ## ✨ Features
 
@@ -19,32 +19,6 @@ A sleek web application that helps you find books at nearby libraries and bookst
 - Node.js (v14 or higher)
 - Google Maps API key
 
-### Installation
-
-1. **Clone or download the project**
-   ```bash
-   cd codedex-cafe-curator
-   ```
-
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
-
-3. **Start the server**
-   ```bash
-   npm start
-   ```
-
-4. **Open your browser**
-   ```
-   http://localhost:3000
-   ```
-
-### Development Mode
-```bash
-npm run dev
-```
 
 ## 🔧 Configuration
 
@@ -72,45 +46,3 @@ The app uses your Google Maps API key. Make sure you have:
 - **CORS Proxy**: Handles cross-origin requests to Google Maps API
 - **Static File Serving**: Serves the frontend application
 
-## 🔮 Phase 1 Complete
-
-✅ Clean HTML structure with ISBN search  
-✅ Sleek black and white CSS styling  
-✅ Location detection and caching  
-✅ Google Maps API integration  
-✅ ISBN validation  
-✅ Progressive search radius  
-✅ Results display with location cards  
-✅ Basic Express server for CORS  
-
-## 🚧 Upcoming Features (Phase 2+)
-
-- **Book Availability Checking**: Real-time availability at each location
-- **Adapter System**: Handle different library/bookstore websites
-- **Book Details**: Title, author, and cover images from ISBN
-- **Historical Tracking**: Track availability changes over time
-- **Notifications**: Alert when books become available
-
-## 🛠️ Technical Details
-
-- **ISBN Validation**: Full ISBN-13 checksum validation
-- **Distance Calculation**: Haversine formula for accurate distances
-- **Location Caching**: 10-minute cache for better performance
-- **Error Handling**: Comprehensive error handling and user feedback
-- **Progressive Enhancement**: Works without JavaScript for basic functionality
-
-## 📄 License
-
-MIT License - feel free to use and modify!
-
-## 🤝 Contributing
-
-This is Phase 1 of the Book Finder project. Future phases will add:
-- Backend scraping system
-- Database integration
-- Advanced availability checking
-- User accounts and notifications
-
----
-
-**Ready to find your next book?** 📚✨
