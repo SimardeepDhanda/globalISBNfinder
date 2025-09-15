@@ -1,0 +1,23 @@
+name: "Hamilton Public Library"
+base_url: "https://www.hpl.ca"
+search_endpoint: "/search?search_api_views_fulltext={isbn}&search=Search"
+method: "GET"
+selectors:
+  available: ".item-available, .available, .catalogue-item .available"
+  copies: ".copy-count, .available-copies"
+  status_keywords:
+    available: ["Available", "In Library", "On Shelf", "Available for Hold"]
+    unavailable: ["Checked Out", "Out of Stock", "Not Available", "All copies in use", "In Transit"]
+  price: null
+  branch: ".branch-name, .location-name"
+  call_number: ".call-number, .shelf-mark"
+rate_limit: 2
+robots_txt: "https://www.hpl.ca/robots.txt"
+structured_data:
+  schema_org: true
+  json_ld: false
+  sru_api: false
+fallback_keywords:
+  available: ["available", "in library", "on shelf", "available for hold", "place hold"]
+  unavailable: ["checked out", "out of stock", "not available", "all copies in use", "in transit"]
+confidence_threshold: 0.7

@@ -2,148 +2,564 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Cafe Curator</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>☕️</text></svg>">
-  <link href="https://fonts.googleapis.com/css2?family=Savate:ital,wght@0,200..900;1,200..900&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+  <title>Book Finder</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📚</text></svg>">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <h1>☕️ Cafe Curator 🍵</h1>
-  <p>Find and save the best cafes near you.</p>
+  <div class="container">
+    <header class="header">
+      <h1>📚 Book Finder</h1>
+      <p class="subtitle">Find your book at nearby libraries and bookstores</p>
+    </header>
 
-  <div>
-    <button onclick="getLocationCachedOrNew()">Find Cafes Near Me</button>
-    <button onclick="showSaved()">Show Saved Cafes</button>
+    <div class="search-container">
+      <div class="search-box">
+        <input type="text" id="isbnInput" placeholder="Enter ISBN (e.g., 9781234567890)" maxlength="13" />
+        <button id="searchBtn" onclick="searchForBook()">Find Book</button>
+      </div>
+      <div class="search-info">
+        <p id="searchStatus">Enter an ISBN to start searching</p>
+      </div>
+    </div>
+
+    <div class="results-container" id="resultsContainer" style="display: none;">
+      <div class="results-header">
+        <h2>Search Results</h2>
+        <div class="search-controls">
+          <span id="searchRadius">Searching within 50km radius</span>
+          <button id="expandSearchBtn" onclick="expandSearch()" style="display: none;">Search Further</button>
+        </div>
+      </div>
+      <div class="cards" id="cardsContainer"></div>
+    </div>
+
+    <div class="no-results" id="noResults" style="display: none;">
+      <h3>No libraries or bookstores found in your area</h3>
+      <p>Try expanding your search radius or check if location services are enabled</p>
+      <button onclick="resetSearch()">Try Again</button>
+    </div>
   </div>
 
-  <div class="cards"></div>
-
   <script>
-    const apiKey = "AIzaSyBzBLn0rQ9TYFaCv3tkE5EKB9t5yD-dxHo"; 
+    const apiKey = "AIzaSyCRIE0aglKoE_eQ3poQl9wtFAYmlBCVbG4"; 
     const useProxy = true;
-    const proxy = "https://cors-anywhere.herokuapp.com/";
+    const proxy = "/api/proxy?url=";
+    
+    let currentSearchRadius = 50000; // 50km in meters (increased from 20km)
+    let currentLocation = null;
+    let currentISBN = null;
+    let availabilityCheckInProgress = false;
 
+    // ISBN validation
+    function validateISBN(isbn) {
+      // Remove any hyphens or spaces
+      isbn = isbn.replace(/[-\s]/g, '');
+      
+      // Check if it's 13 digits
+      if (!/^\d{13}$/.test(isbn)) {
+        return false;
+      }
+      
+      // Basic ISBN-13 checksum validation
+      let sum = 0;
+      for (let i = 0; i < 12; i++) {
+        sum += parseInt(isbn[i]) * (i % 2 === 0 ? 1 : 3);
+      }
+      const checkDigit = (10 - (sum % 10)) % 10;
+      
+      return checkDigit === parseInt(isbn[12]);
+    }
+
+    // Test API key function
+    async function testAPIKey() {
+      try {
+        const testEndpoint = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=43.2524,-79.9246&radius=1000&type=library&key=${apiKey}`;
+        const url = useProxy ? proxy + testEndpoint : testEndpoint;
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        console.log('API Key Test Response:', data);
+        
+        if (data.error_message) {
+          console.error('API Error:', data.error_message);
+          updateSearchStatus(`API Error: ${data.error_message}`, 'error');
+          return false;
+        }
+        
+        return true;
+      } catch (error) {
+        console.error('API Test Error:', error);
+        updateSearchStatus(`API Test Failed: ${error.message}`, 'error');
+        return false;
+      }
+    }
+
+    // Main search function
+    async function searchForBook() {
+      const isbnInput = document.getElementById('isbnInput');
+      const isbn = isbnInput.value.trim();
+      
+      if (!isbn) {
+        updateSearchStatus('Please enter an ISBN number', 'error');
+        return;
+      }
+      
+      if (!validateISBN(isbn)) {
+        updateSearchStatus('Please enter a valid 13-digit ISBN', 'error');
+        return;
+      }
+      
+      currentISBN = isbn;
+      updateSearchStatus('Testing API connection...', 'loading');
+      
+      // Test API key first
+      const apiWorking = await testAPIKey();
+      if (!apiWorking) {
+        updateSearchStatus('API connection failed. Using fallback libraries...', 'error');
+        // Continue with fallback
+      }
+      
+      updateSearchStatus('Getting book details...', 'loading');
+      
+      try {
+        // Get book details first
+        const bookDetails = await getBookDetails(isbn);
+        if (bookDetails) {
+          displayBookDetails(bookDetails);
+        }
+        
+        updateSearchStatus('Getting your location...', 'loading');
+        await getLocationCachedOrNew();
+      } catch (error) {
+        updateSearchStatus('Location access denied. Please enable location services.', 'error');
+      }
+    }
+
+    // Get book details from Google Books API
+    async function getBookDetails(isbn) {
+      try {
+        const response = await fetch(useProxy ? proxy + `https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}` : `https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}`);
+        const data = await response.json();
+        
+        if (data.items && data.items.length > 0) {
+          const book = data.items[0].volumeInfo;
+          return {
+            title: book.title,
+            authors: book.authors ? book.authors.join(', ') : 'Unknown Author',
+            cover: book.imageLinks?.thumbnail || book.imageLinks?.smallThumbnail || null,
+            description: book.description || 'No description available',
+            publishedDate: book.publishedDate || 'Unknown',
+            pageCount: book.pageCount || 'Unknown',
+            language: book.language || 'Unknown'
+          };
+        }
+        return null;
+      } catch (error) {
+        console.error('Error fetching book details:', error);
+        return null;
+      }
+    }
+
+    // Display book details
+    function displayBookDetails(book) {
+      const searchContainer = document.querySelector('.search-container');
+      
+      // Create book details section if it doesn't exist
+      let bookDetailsDiv = document.getElementById('bookDetails');
+      if (!bookDetailsDiv) {
+        bookDetailsDiv = document.createElement('div');
+        bookDetailsDiv.id = 'bookDetails';
+        bookDetailsDiv.className = 'book-details';
+        searchContainer.appendChild(bookDetailsDiv);
+      }
+      
+      bookDetailsDiv.innerHTML = `
+        <div class="book-info">
+          <div class="book-cover">
+            ${book.cover ? `<img src="${book.cover}" alt="${book.title}" />` : '<div class="no-cover">📚</div>'}
+          </div>
+          <div class="book-meta">
+            <h3>${book.title}</h3>
+            <p class="author">by ${book.authors}</p>
+            <p class="published">Published: ${book.publishedDate}</p>
+            <p class="pages">Pages: ${book.pageCount}</p>
+          </div>
+        </div>
+      `;
+    }
+
+    // Location detection (adapted from cafe app)
     function getLocationCachedOrNew() {
       const cache = JSON.parse(localStorage.getItem('cachedLocation') || '{}');
       const now = Date.now();
+      
       if (cache.timestamp && now - cache.timestamp < 10 * 60 * 1000) {
         useLocation(cache.lat, cache.lng);
       } else {
         navigator.geolocation.getCurrentPosition(pos => {
           const lat = pos.coords.latitude;
           const lng = pos.coords.longitude;
+          currentLocation = { lat, lng };
           localStorage.setItem('cachedLocation', JSON.stringify({ lat, lng, timestamp: now }));
           useLocation(lat, lng);
-        }, () => alert("Location access denied or unavailable."));
+        }, () => {
+          updateSearchStatus('Location access denied. Please enable location services.', 'error');
+        });
       }
     }
 
+    // Use location to find libraries and bookstores
     async function useLocation(lat, lng) {
-      const endpoint = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=1500&type=cafe&key=${apiKey}`;
-      const url = useProxy ? proxy + endpoint : endpoint;
+      currentLocation = { lat, lng };
+      console.log(`Using location: ${lat}, ${lng}`);
+      updateSearchStatus('Searching for libraries and bookstores...', 'loading');
+      
       try {
-        const response = await fetch(url);
-        const data = await response.json();
-        if (data.results) {
-          displayCards(data.results);
-        } else {
-          alert("No cafes found.");
+        const places = await findNearbyPlaces(lat, lng, currentSearchRadius);
+        
+        console.log(`Places found: ${places.length}`);
+        
+        if (places.length === 0) {
+          console.log('No places found, showing no results');
+          updateSearchStatus('No libraries or bookstores found in your area. Try expanding the search radius.', 'error');
+          showNoResults();
+          return;
         }
-      } catch (e) {
-        console.error("Error fetching Places API:", e);
-        alert("Error fetching cafes.");
+        
+        updateSearchStatus(`Found ${places.length} locations`, 'success');
+        displayResults(places);
+        
+      } catch (error) {
+        console.error("Error fetching places:", error);
+        updateSearchStatus('Error searching for locations. Please try again.', 'error');
       }
     }
 
-    function displayCards(cafes) {
-      const container = document.querySelector('.cards');
-      container.innerHTML = '';
-      cafes.forEach((cafe, i) => {
-        const wrapper = document.createElement('div');
-        wrapper.className = 'swipe-wrapper';
-        wrapper.style.zIndex = 200 - i;
-
-        var newCards = document.querySelectorAll('.location-card:not(.removed)');
-        var allCards = document.querySelectorAll('.location-card');
-
-        const card = document.createElement('div');
-        card.className = 'location-card';
-
-        // newCards.forEach(function (card, index) {
-        //   card.style.zIndex = allCards.length - index;
-        //   card.style.transform = 'scale(' + (20 - index) / 20 + ') translateY(-' + 30 * index + 'px)';
-        //   // card.style.opacity = (10 - index) / 10;
-        // });
-
-
-        const imgUrl = cafe.photos?.[0]?.photo_reference
-          ? `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${cafe.photos[0].photo_reference}&key=${apiKey}`
-          : 'https://via.placeholder.com/250x150?text=No+Image';
-
-        const cafeData = {
-          name: cafe.name,
-          place_id: cafe.place_id,
-          photo: imgUrl,
-          rating: cafe.rating || 'N/A'
+    // Find nearby libraries and bookstores using Google Maps API
+    async function findNearbyPlaces(lat, lng, radius) {
+      console.log(`Searching for places at ${lat}, ${lng} within ${radius}m radius`);
+      
+      // First try the Google Maps Places API
+      const searches = [
+        // Text search for libraries
+        `https://maps.googleapis.com/maps/api/place/textsearch/json?query=library&location=${lat},${lng}&radius=${radius}&key=${apiKey}`,
+        // Text search for bookstores
+        `https://maps.googleapis.com/maps/api/place/textsearch/json?query=bookstore&location=${lat},${lng}&radius=${radius}&key=${apiKey}`,
+        // Text search for public libraries
+        `https://maps.googleapis.com/maps/api/place/textsearch/json?query=public+library&location=${lat},${lng}&radius=${radius}&key=${apiKey}`,
+        // Text search for Indigo/Chapters specifically
+        `https://maps.googleapis.com/maps/api/place/textsearch/json?query=indigo+chapters&location=${lat},${lng}&radius=${radius}&key=${apiKey}`,
+        // Text search for university libraries
+        `https://maps.googleapis.com/maps/api/place/textsearch/json?query=university+library&location=${lat},${lng}&radius=${radius}&key=${apiKey}`,
+        // Text search for book stores (alternative spelling)
+        `https://maps.googleapis.com/maps/api/place/textsearch/json?query=book+store&location=${lat},${lng}&radius=${radius}&key=${apiKey}`
+      ];
+      
+      const allPlaces = [];
+      let apiWorking = false;
+      
+      for (const endpoint of searches) {
+        try {
+          console.log('Trying endpoint:', endpoint);
+          const url = useProxy ? proxy + encodeURIComponent(endpoint) : endpoint;
+          const response = await fetch(url);
+          const data = await response.json();
+          
+          console.log('Response:', data);
+          
+          if (data.error_message) {
+            console.error('API Error:', data.error_message);
+            if (data.error_message.includes('legacy API') || data.error_message.includes('not enabled')) {
+              console.log('Places API not enabled, will use fallback method');
+              break;
+            }
+            continue;
+          }
+          
+          if (data.results && data.results.length > 0) {
+            console.log(`Found ${data.results.length} results from this search`);
+            allPlaces.push(...data.results);
+            apiWorking = true;
+          } else {
+            console.log('No results from this search');
+          }
+        } catch (error) {
+          console.error('Error with endpoint:', endpoint, error);
+        }
+      }
+      
+      // If API is working, process the results
+      if (apiWorking && allPlaces.length > 0) {
+        // Remove duplicates based on place_id
+        const uniquePlaces = allPlaces.filter((place, index, self) => 
+          index === self.findIndex(p => p.place_id === place.place_id)
+        );
+        
+        console.log(`Found ${allPlaces.length} total places, ${uniquePlaces.length} unique places`);
+        
+      // Sort by distance from user location
+      const placesWithDistance = uniquePlaces.map(place => {
+        const distance = calculateDistance(lat, lng, place.geometry.location.lat, place.geometry.location.lng);
+        console.log(`${place.name}: ${distance.toFixed(1)} km away (from ${lat}, ${lng} to ${place.geometry.location.lat}, ${place.geometry.location.lng})`);
+        return {
+          ...place,
+          distance: distance
         };
-
-        card.innerHTML = `
-          <img src="${imgUrl}" alt="${cafe.name}" />
-          <h3>${cafe.name}</h3>
-          <p>⭐️ Rating: ${cafe.rating || 'N/A'}</p>
-          <p><small>Swipe right to save 💖</small></p>
-        `;
-
-        wrapper.appendChild(card);
-        container.appendChild(wrapper);
-
-        const hammertime = new Hammer(wrapper);
-        hammertime.on('swipeleft', () => {
-          wrapper.style.transform = 'translateX(-150%) rotate(-15deg)';
-          wrapper.style.opacity = 0;
-          setTimeout(() => wrapper.remove(), 100);
-        });
-        hammertime.on('swiperight', () => {
-          saveCafe(JSON.stringify(cafeData));
-          wrapper.style.transform = 'translateX(150%) rotate(15deg)';
-          wrapper.style.opacity = 0;
-          setTimeout(() => wrapper.remove(), 100);
-        });
-      });
+      }).sort((a, b) => a.distance - b.distance);
+      
+      console.log('Google Maps results sorted by distance:', placesWithDistance.map(place => `${place.name}: ${place.distance.toFixed(1)} km`));
+        
+        return placesWithDistance;
+      }
+      
+      // If API is not working, return empty array
+      console.log('Google Maps API not working, no results available');
+      return [];
     }
 
-    function saveCafe(cafeJSON) {
-      const cafe = JSON.parse(cafeJSON);
-      let saved = JSON.parse(localStorage.getItem('savedCafes') || '[]');
-      if (!saved.find(c => c.place_id === cafe.place_id)) {
-        saved.push(cafe);
-        localStorage.setItem('savedCafes', JSON.stringify(saved));
-        alert(`${cafe.name} saved!`);
-      } else {
-        alert(`${cafe.name} is already saved.`);
-      }
-    }
-
-    function showSaved() {
-      const container = document.querySelector('.cards');
-      container.innerHTML = '';
-      const saved = JSON.parse(localStorage.getItem('savedCafes') || '[]');
-      if (saved.length === 0) {
-        container.innerHTML = '<p>No saved cafes yet 😢</p>';
-        return;
-      }
-      saved.forEach(cafe => {
+    // Display search results
+    function displayResults(places) {
+      const resultsContainer = document.getElementById('resultsContainer');
+      const cardsContainer = document.getElementById('cardsContainer');
+      const noResults = document.getElementById('noResults');
+      
+      resultsContainer.style.display = 'block';
+      noResults.style.display = 'none';
+      cardsContainer.innerHTML = '';
+      
+      places.forEach(place => {
         const card = document.createElement('div');
         card.className = 'location-card';
+        
+        const imgUrl = place.photos?.[0]?.photo_reference
+          ? `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${place.photos[0].photo_reference}&key=${apiKey}`
+          : 'https://via.placeholder.com/300x200?text=No+Image';
+        
+        const distance = calculateDistance(currentLocation.lat, currentLocation.lng, place.geometry.location.lat, place.geometry.location.lng);
+        
         card.innerHTML = `
-          <img src="${cafe.photo}" alt="${cafe.name}" />
-          <h3>${cafe.name}</h3>
-          <p>⭐️ Rating: ${cafe.rating}</p>
+          <div class="card-image">
+            <img src="${imgUrl}" alt="${place.name}" />
+          </div>
+          <div class="card-content">
+            <h3>${place.name}</h3>
+            <p class="address">${place.vicinity}</p>
+            <p class="rating">⭐ ${place.rating || 'N/A'}</p>
+            <p class="distance">📍 ${distance.toFixed(1)} km away</p>
+            <div class="availability">
+              <span class="status">🔍 Checking availability...</span>
+            </div>
+          </div>
         `;
-        container.appendChild(card);
+        
+        cardsContainer.appendChild(card);
       });
+      
+      // Show expand search button if we're at 50km
+      if (currentSearchRadius === 50000) {
+        document.getElementById('expandSearchBtn').style.display = 'inline-block';
+      }
+      
+      // Check availability for all places
+      checkAvailabilityForAllPlaces(places);
     }
+
+    // Check availability for all places
+    async function checkAvailabilityForAllPlaces(places) {
+      if (!currentISBN || availabilityCheckInProgress) return;
+      
+      availabilityCheckInProgress = true;
+      updateSearchStatus('Checking book availability at each location...', 'loading');
+      
+      try {
+        console.log('🔍 Starting availability check for all places...');
+        
+        const response = await fetch('/api/check-availability', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            places: places,
+            isbn: currentISBN
+          })
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        console.log('📊 Availability check response:', data);
+        
+        if (data.results) {
+          updateAvailabilityResults(data.results);
+          const availableCount = data.available_count || 0;
+          const totalChecked = data.total_checked || 0;
+          
+          if (availableCount > 0) {
+            updateSearchStatus(`Found ${availableCount} location${availableCount === 1 ? '' : 's'} with the book`, 'success');
+          } else {
+            updateSearchStatus(`Checked ${totalChecked} locations - book not found`, 'warning');
+          }
+        } else {
+          updateSearchStatus('Error checking availability', 'error');
+        }
+        
+      } catch (error) {
+        console.error('❌ Error checking availability:', error);
+        updateSearchStatus(`Error checking availability: ${error.message}`, 'error');
+        
+        // Show error status for all cards
+        const cards = document.querySelectorAll('.location-card');
+        cards.forEach(card => {
+          const availabilityDiv = card.querySelector('.availability');
+          const statusSpan = availabilityDiv.querySelector('.status');
+          statusSpan.innerHTML = `⚠️ Error: ${error.message}`;
+          statusSpan.className = 'status status-error';
+        });
+      } finally {
+        availabilityCheckInProgress = false;
+      }
+    }
+
+    // Update availability results in the UI
+    function updateAvailabilityResults(results) {
+      console.log('🔄 Updating availability results in UI...');
+      const cards = document.querySelectorAll('.location-card');
+      
+      results.forEach((result, index) => {
+        if (cards[index]) {
+          const availabilityDiv = cards[index].querySelector('.availability');
+          const statusSpan = availabilityDiv.querySelector('.status');
+          
+          let statusHtml = '';
+          let statusClass = '';
+          
+          console.log(`📊 Result ${index + 1}:`, result);
+          
+          switch (result.status) {
+            case 'available':
+              // Check if it's a bookstore (no copy count)
+              const isBookstore = result.source && (
+                result.source.includes('Indigo') || 
+                result.source.includes('Chapters') || 
+                result.source.includes('Amazon') ||
+                result.source.includes('bookstore') ||
+                result.source.includes('Bookstore')
+              );
+              
+              if (isBookstore) {
+                statusHtml = `✅ Available`;
+              } else {
+                statusHtml = `✅ Available (${result.copies_available} copies)`;
+              }
+              statusClass = 'status-available';
+              break;
+            case 'unavailable':
+              statusHtml = `❌ Not Available`;
+              statusClass = 'status-unavailable';
+              break;
+            case 'error':
+              statusHtml = `⚠️ Error: ${result.error || 'Unknown error'}`;
+              statusClass = 'status-error';
+              break;
+            case 'rate_limited':
+              statusHtml = `⏳ Rate Limited - Try again later`;
+              statusClass = 'status-rate-limited';
+              break;
+            case 'unknown':
+              statusHtml = `❓ No adapter found`;
+              statusClass = 'status-unknown';
+              break;
+            default:
+              statusHtml = `❓ Unknown Status`;
+              statusClass = 'status-unknown';
+          }
+          
+          if (result.price) {
+            statusHtml += `<br><small>Price: $${result.price}</small>`;
+          }
+          
+          if (result.branch) {
+            statusHtml += `<br><small>Branch: ${result.branch}</small>`;
+          }
+          
+          if (result.call_number) {
+            statusHtml += `<br><small>Call #: ${result.call_number}</small>`;
+          }
+          
+          statusSpan.innerHTML = statusHtml;
+          statusSpan.className = `status ${statusClass}`;
+        }
+      });
+      
+      console.log('✅ Availability results updated in UI');
+    }
+
+    // Calculate distance between two points
+    function calculateDistance(lat1, lng1, lat2, lng2) {
+      const R = 6371; // Earth's radius in km
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLng = (lng2 - lng1) * Math.PI / 180;
+      const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLng/2) * Math.sin(dLng/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      return R * c;
+    }
+
+
+    // Expand search radius
+    function expandSearch() {
+      if (currentSearchRadius === 50000) {
+        currentSearchRadius = 100000; // 100km
+        updateSearchStatus('Expanding search to 100km...', 'loading');
+        document.getElementById('searchRadius').textContent = 'Searching within 100km radius';
+        document.getElementById('expandSearchBtn').style.display = 'none';
+      }
+      
+      if (currentLocation) {
+        useLocation(currentLocation.lat, currentLocation.lng);
+      }
+    }
+
+    // Show no results
+    function showNoResults() {
+      const resultsContainer = document.getElementById('resultsContainer');
+      const noResults = document.getElementById('noResults');
+      
+      resultsContainer.style.display = 'none';
+      noResults.style.display = 'block';
+    }
+
+    // Reset search
+    function resetSearch() {
+      document.getElementById('isbnInput').value = '';
+      document.getElementById('resultsContainer').style.display = 'none';
+      document.getElementById('noResults').style.display = 'none';
+      document.getElementById('expandSearchBtn').style.display = 'none';
+      currentSearchRadius = 50000;
+      currentISBN = null;
+      availabilityCheckInProgress = false;
+      updateSearchStatus('Enter an ISBN to start searching', 'default');
+    }
+
+    // Update search status
+    function updateSearchStatus(message, type) {
+      const statusElement = document.getElementById('searchStatus');
+      statusElement.textContent = message;
+      statusElement.className = `status-${type}`;
+    }
+
+    // Allow Enter key to search
+    document.getElementById('isbnInput').addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        searchForBook();
+      }
+    });
 
   </script>
 </body>

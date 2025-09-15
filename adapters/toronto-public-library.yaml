@@ -1,0 +1,23 @@
+name: "Toronto Public Library"
+base_url: "https://www.torontopubliclibrary.ca"
+search_endpoint: "/search.jsp?Ntt={isbn}&N=0&Ntk=Keyword&Ntx=mode%20matchallpartial"
+method: "GET"
+selectors:
+  available: ".availability-status.available, .item-available"
+  copies: ".copy-count, .available-copies"
+  status_keywords:
+    available: ["Available", "In Library", "On Shelf", "Available Now"]
+    unavailable: ["Checked Out", "Out of Stock", "Not Available", "On Hold"]
+  price: null
+  branch: ".branch-name, .location-name"
+  call_number: ".call-number"
+rate_limit: 2
+robots_txt: "https://www.torontopubliclibrary.ca/robots.txt"
+structured_data:
+  schema_org: true
+  json_ld: false
+  sru_api: false
+fallback_keywords:
+  available: ["available", "in library", "on shelf", "check shelf"]
+  unavailable: ["checked out", "out of stock", "not available", "on hold", "missing"]
+confidence_threshold: 0.7

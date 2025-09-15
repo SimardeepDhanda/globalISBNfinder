@@ -1,0 +1,23 @@
+name: "York University Library"
+base_url: "https://www.library.yorku.ca"
+search_endpoint: "/search/?q={isbn}"
+method: "GET"
+selectors:
+  available: ".availability-available, .item-status.available"
+  copies: ".copy-count, .available-copies"
+  status_keywords:
+    available: ["Available", "In Library", "On Shelf", "Available for Loan"]
+    unavailable: ["Checked Out", "On Hold", "Not Available", "Missing"]
+  price: null
+  branch: ".library-branch, .location"
+  call_number: ".call-number, .shelf-mark"
+rate_limit: 2
+robots_txt: "https://www.library.yorku.ca/robots.txt"
+structured_data:
+  schema_org: true
+  json_ld: false
+  sru_api: true
+fallback_keywords:
+  available: ["available", "in library", "on shelf", "available for loan"]
+  unavailable: ["checked out", "on hold", "not available", "missing", "lost"]
+confidence_threshold: 0.7

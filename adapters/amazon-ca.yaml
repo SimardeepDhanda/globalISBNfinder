@@ -1,0 +1,23 @@
+name: "Amazon Canada"
+base_url: "https://www.amazon.ca"
+search_endpoint: "/s?k={isbn}"
+method: "GET"
+selectors:
+  available: ".a-size-medium.a-color-success, .availability-message"
+  copies: ".stock-quantity, .inventory-count"
+  status_keywords:
+    available: ["In Stock", "Available", "Add to Cart", "Buy Now", "Usually ships within"]
+    unavailable: ["Out of Stock", "Not Available", "Sold Out", "Temporarily Unavailable"]
+  price: ".a-price-whole, .a-offscreen"
+  branch: null
+  call_number: null
+rate_limit: 5
+robots_txt: "https://www.amazon.ca/robots.txt"
+structured_data:
+  schema_org: true
+  json_ld: true
+  sru_api: false
+fallback_keywords:
+  available: ["in stock", "available", "add to cart", "buy now", "usually ships"]
+  unavailable: ["out of stock", "not available", "sold out", "temporarily unavailable"]
+confidence_threshold: 0.8
