@@ -349,7 +349,7 @@
             <p class="rating">⭐ ${place.rating || 'N/A'}</p>
             <p class="distance">📍 ${distance.toFixed(1)} km away</p>
             <div class="availability">
-              <span class="status">🔍 Checking availability...</span>
+              <span class="status loading-spinner">🔍 Checking availability...</span>
             </div>
           </div>
         `;
@@ -471,7 +471,7 @@
               statusClass = 'status-rate-limited';
               break;
             case 'unknown':
-              statusHtml = `❓ No adapter found`;
+              statusHtml = `❓ No adapter found - location not supported yet`;
               statusClass = 'status-unknown';
               break;
             default:

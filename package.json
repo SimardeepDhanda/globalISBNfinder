@@ -1,6 +1,6 @@
 {
   "name": "book-finder",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Find books at nearby libraries and bookstores",
   "main": "server.js",
   "scripts": {

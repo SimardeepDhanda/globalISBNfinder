@@ -107,7 +107,8 @@ app.get('/', (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`🚀 Book Finder server running on port ${PORT}`);
+  console.log(`🚀 Book Finder v1.1.0 server running on port ${PORT}`);
   console.log(`📚 Open http://localhost:${PORT} to view the app`);
   console.log(`🔧 Loaded ${adapterSystem.getAvailableAdapters().length} adapters`);
+  console.log(`✨ Enhanced with loading animations and better error handling`);
 });

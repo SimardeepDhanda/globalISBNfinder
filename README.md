@@ -10,6 +10,8 @@ A sleek web application that helps you find books at nearby libraries and bookst
 - **Real-Time Results**: Shows distance, ratings, and availability status
 - **Sleek Design**: Modern black and white UI with glassmorphism effects
 - **Mobile Responsive**: Works perfectly on all devices
+- **Loading Animations**: Smooth visual feedback during searches
+- **Enhanced Error Handling**: Better error messages and user guidance
 
 ## 🚀 Quick Start
 
